@@ -2,4 +2,4 @@
 
 演示用：修改控制台的字体颜色、背景色以及字体样式
 
-支持Windows + Linux
+支持Windows（7~10） + Linux
