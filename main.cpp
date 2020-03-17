@@ -77,19 +77,17 @@ void print(const wchar_t *message, TextColor textColor = TextColor::White,
 #if (_WIN32_WINNT < 0x0A00)
     (void)textStyle;
     const HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (hOut != INVALID_HANDLE_VALUE) {
-        CONSOLE_SCREEN_BUFFER_INFO csbi;
-        SecureZeroMemory(&csbi, sizeof(csbi));
-        GetConsoleScreenBufferInfo(hOut, &csbi);
-        const WORD originalColor = csbi.wAttributes;
-        SetConsoleTextAttribute(
-            hOut,
-            getForegroundColor(static_cast<int>(textColor)) |
-                getBackgroundColor(static_cast<int>(backgroundColor)) |
-                (originalColor & 0xF0));
-        fwprintf(stdout, L"%s", message);
-        SetConsoleTextAttribute(hOut, originalColor);
-    }
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    SecureZeroMemory(&csbi, sizeof(csbi));
+    GetConsoleScreenBufferInfo(hOut, &csbi);
+    const WORD originalColor = csbi.wAttributes;
+    SetConsoleTextAttribute(
+        hOut,
+        getForegroundColor(static_cast<int>(textColor)) |
+            getBackgroundColor(static_cast<int>(backgroundColor)) |
+            (originalColor & 0xF0));
+    fwprintf(stdout, L"%s", message);
+    SetConsoleTextAttribute(hOut, originalColor);
 #endif
 #endif
 #if !defined(WIN32) || (defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0A00))
