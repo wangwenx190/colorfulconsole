@@ -3,8 +3,6 @@
 #ifdef WIN32
 #include <windows.h>
 
-#if (_WIN32_WINNT >= 0x0A00)
-
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
 #endif
@@ -28,7 +26,10 @@ static void win10_enableVTMode() {
     }
 }
 
-#else
+static WORD getTextStyle(int style) {
+    const WORD textStyles[] = {0, FOREGROUND_INTENSITY, COMMON_LVB_UNDERSCORE};
+    return textStyles[style];
+}
 
 static WORD getForegroundColor(int color) {
     const WORD foregroundColors[] = {0,
@@ -55,9 +56,13 @@ static WORD getBackgroundColor(int color) {
                                          BACKGROUND_RED};
     return backgroundColors[color];
 }
+#endif
 
-#endif
-#endif
+static bool isWin7ToWin8Point1() {
+    // Both Win10 and Unix support virtual terminal sequences.
+    // Only Win7 ~ Win8.1 need platform-specific operations.
+    return false;
+}
 
 namespace Logger {
 
@@ -73,37 +78,36 @@ void print(const wchar_t *message, TextColor textColor = TextColor::White,
     if (!message) {
         return;
     }
-#if defined(WIN32)
-#if (_WIN32_WINNT < 0x0A00)
-    (void)textStyle;
-    const HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    CONSOLE_SCREEN_BUFFER_INFO csbi;
-    SecureZeroMemory(&csbi, sizeof(csbi));
-    GetConsoleScreenBufferInfo(hOut, &csbi);
-    const WORD originalColor = csbi.wAttributes;
-    SetConsoleTextAttribute(
-        hOut,
-        getForegroundColor(static_cast<int>(textColor)) |
-            getBackgroundColor(static_cast<int>(backgroundColor)) |
-            (originalColor & 0xF0));
-    fwprintf(stdout, L"%s", message);
-    SetConsoleTextAttribute(hOut, originalColor);
-#endif
-#endif
-#if !defined(WIN32) || (defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0A00))
 #ifdef WIN32
-    if (!win10_vtModeEnabled) {
-        win10_enableVTMode();
-        win10_vtModeEnabled = true;
-    }
+    if (isWin7ToWin8Point1()) {
+        const HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        CONSOLE_SCREEN_BUFFER_INFO csbi;
+        SecureZeroMemory(&csbi, sizeof(csbi));
+        GetConsoleScreenBufferInfo(hOut, &csbi);
+        const WORD originalColor = csbi.wAttributes;
+        SetConsoleTextAttribute(
+            hOut,
+            getTextStyle(static_cast<int>(textStyle)) |
+                getForegroundColor(static_cast<int>(textColor)) |
+                getBackgroundColor(static_cast<int>(backgroundColor)) |
+                (originalColor & 0xF0));
+        fwprintf(stdout, L"%s", message);
+        SetConsoleTextAttribute(hOut, originalColor);
+    } else {
+        if (!win10_vtModeEnabled) {
+            win10_enableVTMode();
+            win10_vtModeEnabled = true;
+        }
 #endif
-    const int textStyles[] = {0, 1, 4};
-    const int foregroundColors[] = {30, 31, 32, 33, 34, 35, 36, 37};
-    const int backgroundColors[] = {40, 41, 42, 43, 44, 45, 46, 47};
-    fwprintf(stdout, L"\x1b[%d;%d;%dm%s\x1b[0m",
-             textStyles[static_cast<int>(textStyle)],
-             foregroundColors[static_cast<int>(textColor)],
-             backgroundColors[static_cast<int>(backgroundColor)], message);
+        const int textStyles[] = {0, 1, 4};
+        const int foregroundColors[] = {30, 31, 32, 33, 34, 35, 36, 37};
+        const int backgroundColors[] = {40, 41, 42, 43, 44, 45, 46, 47};
+        fwprintf(stdout, L"\x1b[%d;%d;%dm%s\x1b[0m",
+                 textStyles[static_cast<int>(textStyle)],
+                 foregroundColors[static_cast<int>(textColor)],
+                 backgroundColors[static_cast<int>(backgroundColor)], message);
+#ifdef WIN32
+    }
 #endif
 }
 
