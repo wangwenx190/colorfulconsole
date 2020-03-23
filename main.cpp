@@ -1,7 +1,11 @@
 #include <cwchar>
 
 #ifdef WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
+#include <versionhelpers.h>
 
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
@@ -61,7 +65,11 @@ static WORD getBackgroundColor(int color) {
 static bool isWin7ToWin8Point1() {
     // Both Win10 and Unix support virtual terminal sequences.
     // Only Win7 ~ Win8.1 need platform-specific operations.
+#ifdef WIN32
+    return (IsWindows7OrGreater() && !IsWindows10OrGreater());
+#else
     return false;
+#endif
 }
 
 namespace Logger {
